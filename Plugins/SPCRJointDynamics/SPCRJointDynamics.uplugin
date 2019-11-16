@@ -5,7 +5,7 @@
   "FriendlyName": "SPCRJointDynamics",
   "VersionName": "1.0",
   "CreatedBy": "SPCRJointDynamics",
-  "CreatedByURL": "http://spark-creative.jp/",
+  "CreatedByURL": "https://spark-creative.jp/",
   "Description": "Dynamics System developed by SPARKCREATIVE.",
   "Category": "Dynamics",
   "EnabledByDefault": true,
