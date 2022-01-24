@@ -1,8 +1,0 @@
-{
-	"BuildId": "8386587",
-	"Modules": 
-	{
-		"SPCRJointDynamics": "UE4Editor-SPCRJointDynamics.dll",
-		"SPCRJointDynamicsEd": "UE4Editor-SPCRJointDynamicsEd.dll"
-	}
-}
