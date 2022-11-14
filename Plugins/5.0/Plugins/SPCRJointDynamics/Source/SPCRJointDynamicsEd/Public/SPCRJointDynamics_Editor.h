@@ -21,6 +21,9 @@ class FCanvas;
 //======================================================================================
 //
 //======================================================================================
+/**
+ * 
+ */
 class SPCRJOINTDYNAMICSED_API SPCRJointDynamics_Editor : public SPCRJointDynamics_EditorBase
 {
 public:

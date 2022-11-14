@@ -21,6 +21,13 @@
 //
 //======================================================================================
 
+DECLARE_STATS_GROUP(TEXT("SPCRJoingDynamics"), STATGROUP_SPCRJointDynamics, STATCAT_Advanced);
+
+//======================================================================================
+//
+//======================================================================================
+
+
 #define SPCR_COLLIDER_SCALE_FACTOR 100
 
 USTRUCT(BlueprintType)
@@ -152,6 +159,9 @@ struct SPCRPoint
 	float Gravity;
 	float Friction;
 	float Hardness;
+	//float Damping;
+	float Drag;
+	float Lift;
 	float LimitStrength;
 
 	bool bVirtual;
@@ -167,6 +177,9 @@ struct SPCRPoint
 		, Gravity(1.0f)
 		, Friction(0.0f)
 		, Hardness(0.0f)
+		//, Damping(0.0f)
+		, Drag(0.0f)
+		, Lift(0.0f)
 		, LimitStrength(0.0f)
 		, bVirtual(false)
 	{
@@ -312,6 +325,33 @@ struct SPCRJOINTDYNAMICS_API FAnimNode_SPCRJointDynamics : public FAnimNode_Skel
 
 	UPROPERTY(EditAnywhere, Category = Parameters)
 	FSPCRCurve GravityCurve;
+
+	/*UPROPERTY(EditAnywhere, Category = Parameters)
+	bool bUseDamping = false;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseDamping"))
+	float Damping = 0.99;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseDamping"))
+	FSPCRCurve DampingCurve;*/
+
+	UPROPERTY(EditAnywhere, Category = Parameters)
+	bool bUseDrag;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseDrag"))
+	float DragCoefficient = 0.1f;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseDrag"))
+	FSPCRCurve DragCurve;
+
+	UPROPERTY(EditAnywhere, Category = Parameters)
+	bool bUseLift;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseLift"))
+	float LiftCoefficient = 1;
+
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (EditCondition = "bUseLift"))
+	FSPCRCurve LiftCurve;
 	
 	UPROPERTY(EditAnywhere, Category = Parameters)
 	FVector WindForce = FVector(0.0f, 0.0f, 0.0f);

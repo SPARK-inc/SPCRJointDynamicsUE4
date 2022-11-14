@@ -269,8 +269,16 @@ void SPCRJointDynamics_Editor::DrawHUD(FEditorViewportClient* ViewportClient, FV
 	if (IsValidColliderIndex())
 	{
 		FSPCRJointDynamicsBody* collider = GetCurrColliderRuntimeNode();
-		FString colliderType = collider->Height > 0.0f ? "Capsule" : "Sphere";
-		TempString = colliderType + " [" + FString::FromInt(SelectedColliderIndex) + "]";
+		if (collider != nullptr)
+		{
+			FString colliderType = collider->Height > 0.0f ? "Capsule" : "Sphere";
+			TempString = colliderType + " [" + FString::FromInt(SelectedColliderIndex) + "]";
+		}
+		else
+		{
+			SelectedColliderIndex = SPCR_INVALID_COLLIDER_INDEX;
+			TempString = "NONE";
+		}
 	}
 	else
 	{

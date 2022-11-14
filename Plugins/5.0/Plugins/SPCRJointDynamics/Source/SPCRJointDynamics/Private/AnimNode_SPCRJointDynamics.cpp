@@ -9,13 +9,28 @@
 #include "DrawDebugHelpers.h"
 #include "Engine.h"
 
+//======================================================================================
+//
+//======================================================================================
 static const float SPCR_EPSILON = 0.0001f;
 
-/////////////////////////////////////////////////////
-// FAnimNode_SPCRJointDynamics
+//======================================================================================
+//
+//======================================================================================
+DECLARE_CYCLE_STAT(TEXT("SPCR JointDynamics"), STAT_SPCRJointDynamics_Eval, STATGROUP_SPCRJointDynamics);
 
-DECLARE_CYCLE_STAT(TEXT("SPCR JointDynamics"), STAT_SPCRJointDynamics_Eval, STATGROUP_Anim);
+DECLARE_CYCLE_STAT(TEXT("UpdateColliders"), STAT_SPCR_UPDATE_COLLIDER, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("UpdateControlPoints"), STAT_SPCR_UPDATE_CONTROL_POINTS, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("UpdateConstraints"), STAT_SPCR_UPDATE_CONSTRAINTS, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("UpdateCollision"), STAT_SPCR_UPDATE_COLLISION, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("UpdateSurfaceCollision"), STAT_SPCR_UPDATE_SURFACE_COLLISION, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("ForceFixConstraints"), STAT_SPCR_FORCE_FIX_CONSTRAINTS, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("ApplyToBone"), STAT_SPCR_APPLY_TO_BONE, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("HandleDebugDraw"), STAT_SPCR_HANLDE_DEBUG_DRAW, STATGROUP_SPCRJointDynamics);
 
+//======================================================================================
+//
+//======================================================================================
 FAnimNode_SPCRJointDynamics::FAnimNode_SPCRJointDynamics()
 {
 	_bRequireResetPose = true;
@@ -31,6 +46,9 @@ FAnimNode_SPCRJointDynamics::FAnimNode_SPCRJointDynamics()
 	_SurfaceConstraints.Empty();
 }
 
+//======================================================================================
+//
+//======================================================================================
 bool FAnimNode_SPCRJointDynamics::RequireResetCheck(FComponentSpacePoseContext& Output)
 {
 	if ((jointDynamicsComponent != nullptr) && jointDynamicsComponent->isReset)
@@ -63,6 +81,9 @@ bool FAnimNode_SPCRJointDynamics::RequireResetCheck(FComponentSpacePoseContext& 
 	return false;
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::OnResetAll(FComponentSpacePoseContext& Output)
 {
 	// 初期化
@@ -84,8 +105,13 @@ void FAnimNode_SPCRJointDynamics::OnResetAll(FComponentSpacePoseContext& Output)
 	CreateSurfaceConstraints();
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::EvaluateSkeletalControl_AnyThread(FComponentSpacePoseContext& Output, TArray<FBoneTransform>& OutBoneTransforms)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCRJointDynamics_Eval);
+
 	// 制御点と拘束の更新
 	if (RequireResetCheck(Output))
 	{
@@ -148,6 +174,9 @@ void FAnimNode_SPCRJointDynamics::EvaluateSkeletalControl_AnyThread(FComponentSp
 	HandleDebugDraw();
 }
 
+//======================================================================================
+//
+//======================================================================================
 bool FAnimNode_SPCRJointDynamics::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
 {
 	for (auto&& Pair : JointPairs)
@@ -159,6 +188,9 @@ bool FAnimNode_SPCRJointDynamics::IsValidToEvaluate(const USkeleton* Skeleton, c
 	return true;
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::InitializeBoneReferences(const FBoneContainer& RequiredBones)
 {
 	for (auto&& Pair : JointPairs)
@@ -172,6 +204,9 @@ void FAnimNode_SPCRJointDynamics::InitializeBoneReferences(const FBoneContainer&
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::Initialize_AnyThread(const FAnimationInitializeContext& Context)
 {
 	FAnimNode_SkeletalControlBase::Initialize_AnyThread(Context);
@@ -190,11 +225,17 @@ void FAnimNode_SPCRJointDynamics::Initialize_AnyThread(const FAnimationInitializ
 	_SurfaceConstraints.Empty();
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
 {
 	FAnimNode_SkeletalControlBase::CacheBones_AnyThread(Context);
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::ResetDynamics(ETeleportType InTeleportType)
 {
 	Super::ResetDynamics(InTeleportType);
@@ -205,6 +246,9 @@ void FAnimNode_SPCRJointDynamics::ResetDynamics(ETeleportType InTeleportType)
 	_RestDeltaTime = 0.0f;
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateInternal(const FAnimationUpdateContext& Context)
 {
 	FAnimNode_SkeletalControlBase::UpdateInternal(Context);
@@ -212,6 +256,9 @@ void FAnimNode_SPCRJointDynamics::UpdateInternal(const FAnimationUpdateContext& 
 	_DeltaTime = Context.GetDeltaTime();
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::GatherDebugData(FNodeDebugData& DebugData)
 {
 	FString DebugLine = DebugData.GetNodeName(this);
@@ -220,8 +267,13 @@ void FAnimNode_SPCRJointDynamics::GatherDebugData(FNodeDebugData& DebugData)
 	ComponentPose.GatherDebugData(DebugData);
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Output)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_COLLIDER);
+
 	auto UpdateSphereTransform = [](
 		FSPCRCollider& Target,
 		const FVector& Base,
@@ -334,8 +386,13 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateControlPoints(FComponentSpacePoseContext& Output, const FVector& Wind, float DeltaTime)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_CONTROL_POINTS);
+
 	const auto& ToWorld = Output.AnimInstanceProxy->GetComponentTransform();
 	const int32 PointTblNum = _PointsTbl.Num();
 	const float StepTime_x2_Half = DeltaTime * DeltaTime * 0.5f;
@@ -372,6 +429,32 @@ void FAnimNode_SPCRJointDynamics::UpdateControlPoints(FComponentSpacePoseContext
 			Displacement *= Point.Resistance;
 			Displacement *= 1.0f - FMath::Clamp(Point.Friction, 0.0f, 1.0f);
 
+			//Damping and the Drag are almost doing the same, so I am commenting off the Damping code
+			//Assuming that we can achieve the same behaviour using Drag
+			/*if (bUseDamping)
+			{
+				Displacement *= Point.Damping;
+			}*/
+
+			if (bUseDrag)
+			{
+				float MoveSpeed = Displacement.SizeSquared();
+				FVector VelNormalize = Displacement.GetSafeNormal();
+				//instead of -1 can I make the -1/2??
+				FVector DragForce = -1 * ((Point.Drag * MoveSpeed * VelNormalize) / 2);
+
+				Displacement += DragForce;
+			}
+
+			if (bUseLift)
+			{
+				FVector MotionVec = Displacement.GetSafeNormal();
+				FVector SideVec = FVector::CrossProduct(MotionVec, Gravity.GetSafeNormal());
+				FVector LiftVec = FVector::CrossProduct(MotionVec, SideVec);
+				FVector ForceLift = LiftVec * Point.Lift;
+				Displacement += ForceLift;
+			}
+
 			Point.PositionPrev = Point.Position;
 			Point.Position += Displacement;
 			Point.Friction = 0.0f;
@@ -399,8 +482,13 @@ void FAnimNode_SPCRJointDynamics::UpdateControlPoints(FComponentSpacePoseContext
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateConstraints()
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_CONSTRAINTS);
+
 	const int32 ConstraintsNum = _Constraints.Num();
 	for (int32 iConstraint = 0; iConstraint < ConstraintsNum; ++iConstraint)
 	{
@@ -457,8 +545,13 @@ void FAnimNode_SPCRJointDynamics::UpdateConstraints()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateCollision()
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_COLLISION);
+
 	const int32 ConstraintsNum = _Constraints.Num();
 	for (int32 iConstraint = 0; iConstraint < ConstraintsNum; ++iConstraint)
 	{
@@ -546,8 +639,13 @@ void FAnimNode_SPCRJointDynamics::UpdateCollision()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::ForceFixConstraints()
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_FORCE_FIX_CONSTRAINTS);
+
 	const int32 ConstraintsNum = _Constraints.Num();
 	for (int32 iConstraint = 0; iConstraint < ConstraintsNum; ++iConstraint)
 	{
@@ -566,8 +664,13 @@ void FAnimNode_SPCRJointDynamics::ForceFixConstraints()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_SURFACE_COLLISION);
+
 	struct SPCRRay
 	{
 		FVector RayOrigin, RayDirection;
@@ -834,8 +937,13 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::ApplyToBone(FComponentSpacePoseContext& Output, TArray<FBoneTransform>& OutBoneTransforms)
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_APPLY_TO_BONE);
+
 	const auto& CompT = Output.AnimInstanceProxy->GetComponentTransform();
 
 	if (Alpha < 1.0f)
@@ -901,6 +1009,9 @@ void FAnimNode_SPCRJointDynamics::ApplyToBone(FComponentSpacePoseContext& Output
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::LockAngles(SPCRPoint* spcrPoint)
 {
 	if (spcrPoint->pParent == nullptr || !bLimitAngle)
@@ -925,6 +1036,9 @@ void FAnimNode_SPCRJointDynamics::LockAngles(SPCRPoint* spcrPoint)
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FVector& Center, float Radius, FVector& Point)
 {
 	auto direction = Point - Center;
@@ -940,11 +1054,17 @@ void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FVector& Center, float
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FSPCRCollider& Collider, FVector& Point)
 {
 	PushoutFromSphere(Collider.Position, Collider.Radius, Point);
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::PushoutFromCapsule(const FSPCRCollider& Collider, FVector& Point)
 {
 	auto capsuleVec = Collider.Direction;
@@ -981,6 +1101,9 @@ void FAnimNode_SPCRJointDynamics::PushoutFromCapsule(const FSPCRCollider& Collid
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::PushoutFromCollider(const FSPCRCollider& Collider, FVector& Point)
 {
 	if (Collider.bCapsule)
@@ -993,6 +1116,9 @@ void FAnimNode_SPCRJointDynamics::PushoutFromCollider(const FSPCRCollider& Colli
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collider, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius)
 {
 	auto CollisionDetection_Sphere = [](const FVector& SphereCenter, float SphereRadius, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius)
@@ -1052,6 +1178,9 @@ bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collid
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 float FAnimNode_SPCRJointDynamics::ComputeNearestPoints(FVector posP, FVector dirP, FVector posQ, FVector dirQ, float& tP, float& tQ, FVector& pointOnP, FVector& pointOnQ)
 {
 	auto n1 = FVector::CrossProduct(dirP, FVector::CrossProduct(dirQ, dirP));
@@ -1065,6 +1194,9 @@ float FAnimNode_SPCRJointDynamics::ComputeNearestPoints(FVector posP, FVector di
 	return (pointOnQ - pointOnP).SizeSquared();
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateColliders()
 {
 	//const auto& Pose = Output.Pose.GetPose();
@@ -1089,6 +1221,9 @@ void FAnimNode_SPCRJointDynamics::CreateColliders()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateControlPoints(FComponentSpacePoseContext& Output)
 {
 	const auto& Pose = Output.Pose.GetPose();
@@ -1151,6 +1286,9 @@ void FAnimNode_SPCRJointDynamics::CreateControlPoints(FComponentSpacePoseContext
 			Pt.Resistance = 1.0f - FMath::Clamp(Resistance.ComputeCurve(Pt.OrderRate) * 0.01f, 0.0f, 1.0f);
 			Pt.Gravity = GravityCurve.ComputeCurve(Pt.OrderRate);
 			Pt.Hardness = FMath::Clamp(Hardness.ComputeCurve(Pt.OrderRate) * 0.01f, 0.0f, 1.0f);
+			//Pt.Damping = FMath::Clamp(Damping * DampingCurve.ComputeCurve(Pt.OrderRate), 0.0f, 0.99f);
+			Pt.Drag = FMath::Clamp(DragCoefficient * DragCurve.ComputeCurve(Pt.OrderRate), 0.0f, 1.0f);
+			Pt.Lift = LiftCoefficient * FMath::Clamp(LiftCurve.ComputeCurve(Pt.OrderRate), 0.0f, 1.0f);
 			Pt.LimitStrength = LimitCurve.ComputeCurve(Pt.OrderRate);
 			Pt.bVirtual = false;
 			Points.Add(Pt);
@@ -1166,6 +1304,9 @@ void FAnimNode_SPCRJointDynamics::CreateControlPoints(FComponentSpacePoseContext
 			Pt.Resistance = 1.0f - FMath::Clamp(Resistance.ComputeCurve(Pt.OrderRate) * 0.01f, 0.0f, 1.0f);
 			Pt.Gravity = GravityCurve.ComputeCurve(Pt.OrderRate);
 			Pt.Hardness = FMath::Clamp(Hardness.ComputeCurve(Pt.OrderRate) * 0.01f, 0.0f, 1.0f);
+			//Pt.Damping = FMath::Clamp(Damping * DampingCurve.ComputeCurve(Pt.OrderRate), 0.0f, 0.99f);
+			Pt.Drag = FMath::Clamp(DragCoefficient * DragCurve.ComputeCurve(Pt.OrderRate), 0.0f, 1.0f);
+			Pt.Lift = LiftCoefficient * FMath::Clamp(LiftCurve.ComputeCurve(Pt.OrderRate), 0.0f, 1.0f);
 			Pt.LimitStrength = LimitCurve.ComputeCurve(Pt.OrderRate);
 			Pt.bVirtual = true;
 			Points.Add(Pt);
@@ -1236,6 +1377,9 @@ void FAnimNode_SPCRJointDynamics::CreateControlPoints(FComponentSpacePoseContext
 	);
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraints()
 {
 	if (bBending_Horizontal)
@@ -1263,6 +1407,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraints()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraintStructuralVertical(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision)
 {
 	const int32 PointsTblNum = PointsTbl.Num();
@@ -1282,6 +1429,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraintStructuralVertical(TArray<SPCR
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraintStructuralHorizontal(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision)
 {
 	const int32 PointsTblNum = PointsTbl.Num();
@@ -1329,6 +1479,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraintStructuralHorizontal(TArray<SP
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraintBendingVertical(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision)
 {
 	const int32 PointsTblNum = PointsTbl.Num();
@@ -1348,6 +1501,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraintBendingVertical(TArray<SPCRCon
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraintBendingHorizontal(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision)
 {
 	const int32 PointsTblNum = PointsTbl.Num();
@@ -1395,6 +1551,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraintBendingHorizontal(TArray<SPCRC
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateConstraintShear(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision)
 {
 	const int32 PointsTblNum = PointsTbl.Num();
@@ -1460,6 +1619,9 @@ void FAnimNode_SPCRJointDynamics::CreateConstraintShear(TArray<SPCRConstraint>& 
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::CreateSurfaceConstraints()
 {
 	const int32 PointsTblNum = _PointsTbl.Num();
@@ -1486,6 +1648,9 @@ void FAnimNode_SPCRJointDynamics::CreateSurfaceConstraints()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::Debug_DrawSurfaceTriangle(FVector a, FVector b, FVector c)
 {
 #if WITH_EDITOR
@@ -1501,6 +1666,9 @@ void FAnimNode_SPCRJointDynamics::Debug_DrawSurfaceTriangle(FVector a, FVector b
 #endif
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::SetGlobalColliders(int32 Guid, const TArray<FSPCRCollider>& Colliders)
 {
 	FScopeLock Lock(&_GlobalCollidersLock);
@@ -1515,6 +1683,9 @@ void FAnimNode_SPCRJointDynamics::SetGlobalColliders(int32 Guid, const TArray<FS
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::GetGlobalColliders(int32 Guid, TArray<FSPCRCollider>& Output)
 {
 	FScopeLock Lock(&_GlobalCollidersLock);
@@ -1529,13 +1700,21 @@ void FAnimNode_SPCRJointDynamics::GetGlobalColliders(int32 Guid, TArray<FSPCRCol
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::HandleDebugDraw()
 {
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_HANLDE_DEBUG_DRAW);
+
 	DebugDrawConstraints();
 	DebugDrawColliders();
 	DebugDrawSurfaceCollision();
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::DebugDrawConstraints()
 {
 	// 拘束のデバッグ表示
@@ -1556,11 +1735,16 @@ void FAnimNode_SPCRJointDynamics::DebugDrawConstraints()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::DebugDrawColliders()
 {
-
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::DebugDrawSurfaceCollision()
 {
 	if (bDebugDrawSurfaceCollision)
@@ -1574,6 +1758,9 @@ void FAnimNode_SPCRJointDynamics::DebugDrawSurfaceCollision()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::SyncColliderPositions()
 {
 	if (_Colliders.Num() <= 0 || _ColliderInfos.Num() <= 0)
@@ -1589,5 +1776,8 @@ void FAnimNode_SPCRJointDynamics::SyncColliderPositions()
 	}
 }
 
+//======================================================================================
+//
+//======================================================================================
 TMap<int32, TArray<FSPCRCollider>> FAnimNode_SPCRJointDynamics::_GlobalColliders;
 FCriticalSection FAnimNode_SPCRJointDynamics::_GlobalCollidersLock;

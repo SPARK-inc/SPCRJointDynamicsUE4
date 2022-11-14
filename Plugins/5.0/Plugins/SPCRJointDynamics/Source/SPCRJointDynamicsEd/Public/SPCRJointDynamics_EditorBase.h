@@ -40,6 +40,9 @@ struct HSPCRColliderHitProxy : public HHitProxy
 //======================================================================================
 //
 //======================================================================================
+/**
+ * 
+ */
 class SPCRJOINTDYNAMICSED_API SPCRJointDynamics_EditorBase : public IAnimNodeEditMode
 {
 public:
