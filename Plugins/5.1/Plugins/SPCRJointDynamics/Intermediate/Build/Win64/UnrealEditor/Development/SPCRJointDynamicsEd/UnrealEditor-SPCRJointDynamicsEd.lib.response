@@ -1,0 +1,13 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-SPCRJointDynamicsEd.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"E:\WorkSpace\Github\SPCRJointDynamicsUE4\MyProject\Intermediate\Build\Win64\MyProjectEditor\Development\UnrealEd\SharedPCH.UnrealEd.InclOrderUnreal5_0.h.obj"
+"E:\WorkSpace\Github\SPCRJointDynamicsUE4\MyProject\Plugins\SPCRJointDynamics\Intermediate\Build\Win64\UnrealEditor\Development\SPCRJointDynamicsEd\Module.SPCRJointDynamicsEd.cpp.obj"
+"E:\WorkSpace\Github\SPCRJointDynamicsUE4\MyProject\Plugins\SPCRJointDynamics\Intermediate\Build\Win64\UnrealEditor\Development\SPCRJointDynamicsEd\SPCRJointDynamics_EditorBase.cpp.obj"
+"E:\WorkSpace\Github\SPCRJointDynamicsUE4\MyProject\Plugins\SPCRJointDynamics\Intermediate\Build\Win64\UnrealEditor\Development\SPCRJointDynamicsEd\Default.rc2.res"
+/OUT:"E:\WorkSpace\Github\SPCRJointDynamicsUE4\MyProject\Plugins\SPCRJointDynamics\Intermediate\Build\Win64\UnrealEditor\Development\SPCRJointDynamicsEd\UnrealEditor-SPCRJointDynamicsEd.lib"
