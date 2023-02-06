@@ -114,7 +114,6 @@ void SPCRJointDynamics_EditorBase::DoScale(FVector& InTranslation)
 
 void SPCRJointDynamics_EditorBase::RegisterPoseWatchedNode(UAnimGraphNode_Base* InEditorNode, FAnimNode_Base* InRuntimeNode)
 {
-	
 }
 
 void SPCRJointDynamics_EditorBase::EnterMode(class UAnimGraphNode_Base* InEditorNode, struct FAnimNode_Base* InRuntimeNode)

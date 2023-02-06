@@ -28,6 +28,7 @@ public class SPCRJointDynamicsEd : ModuleRules
             "Engine",
             "InputCore",
             "EditorFramework",
+            "AnimationEditMode",
             "SPCRJointDynamics",
         });
         PublicDependencyModuleNames.AddRange(new string[] {
@@ -47,8 +48,8 @@ public class SPCRJointDynamicsEd : ModuleRules
             "PropertyEditor",
             "Projects",
             "BlueprintGraph",
-            "SPCRJointDynamics",
             "AnimationEditMode",
+            "SPCRJointDynamics",
         });
     }
 }
