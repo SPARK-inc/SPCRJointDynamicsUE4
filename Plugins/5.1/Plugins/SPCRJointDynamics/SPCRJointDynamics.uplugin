@@ -1,0 +1,29 @@
+﻿{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "SPCRJointDynamics",
+  "Description": "Dynamics System developed by SPARKCREATIVE.",
+  "Category": "Animation",
+  "CreatedBy": "NoriyukiHiromoto",
+  "CreatedByURL": "http://spark-creative.jp/",
+  "DocsURL": "https://github.com/SPARK-inc/SPCRJointDynamicsUE4",
+  "MarketplaceURL": "SPCRJointDynamics : Cloth-like bone physics for UnrealEngine",
+  "SupportURL": "https://github.com/SPARK-inc/SPCRJointDynamicsUE4/issues",
+  "CanContainContent": false,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "SPCRJointDynamics",
+      "Type": "Runtime",
+      "LoadingPhase": "PostConfigInit"
+    },
+    {
+      "Name": "SPCRJointDynamicsEd",
+      "Type": "UncookedOnly",
+      "LoadingPhase": "PreDefault"
+    }
+  ]
+}
