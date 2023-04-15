@@ -42,6 +42,13 @@ struct SPCRJOINTDYNAMICS_API FSPCRCollider
 	FVector Position;
 	FVector Direction;
 	int8 SurfaceColliderType;
+
+	//Collider interpolation helper
+	FVector PositionPrevFrame;
+	FVector DirectionPrevFrame;
+
+	FVector PositionPrev;
+	FVector DirectionPrev;
 };
 
 USTRUCT()
@@ -308,6 +315,9 @@ struct SPCRJOINTDYNAMICS_API FAnimNode_SPCRJointDynamics : public FAnimNode_Skel
 	UPROPERTY(EditAnywhere, Category = Parameters, meta = (ClampMin = "1", ClampMax = "16", UIMin = "1", UIMax = "16"))
 	int32 MaxIterations = 1;
 
+	UPROPERTY(EditAnywhere, Category = Parameters, meta = (ClampMin = "1", ClampMax = "10", UIMin = "1", UIMax = "10"))
+	int32 CollisionSubInterations = 1;
+
 	UPROPERTY(EditAnywhere, Category = Parameters, meta = (ClampMin = "1", ClampMax = "4", UIMin = "1", UIMax = "4"))
 	int32 CollisionLOD = 2;
 
@@ -443,24 +453,26 @@ private:
 	void OnResetAll(FComponentSpacePoseContext& Output);
 
 	void PushoutFromSphere(const FVector& Center, float Radius, FVector& Point);
-	void PushoutFromSphere(const FSPCRCollider& Collider, FVector& Point);
-	void PushoutFromCapsule(const FSPCRCollider& Collider, FVector& Point);
-	void PushoutFromCollider(const FSPCRCollider& Collider, FVector& Point);
+	void PushoutFromSphere(const FSPCRCollider& Collider, FVector& Point, float CollisionDelta);
+	void PushoutFromCapsule(const FSPCRCollider& Collider, FVector& Point, float CollisionDelta);
+	void PushoutFromCollider(const FSPCRCollider& Collider, FVector& Point, float CollisionDelta);
 
-	bool CollisionDetection(const FSPCRCollider& Collider, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius);
+	bool CollisionDetection(const FSPCRCollider& Collider, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius, float CollisionDelta);
 	float ComputeNearestPoints(FVector posP, FVector dirP, FVector posQ, FVector dirQ, float& tP, float& tQ, FVector& pointOnP, FVector& pointOnQ);
 
 	void CreateControlPoints(FComponentSpacePoseContext& Output);
 	void UpdateControlPoints(FComponentSpacePoseContext& Output, const FVector& Wind, float DeltaTime);
 
 	void CreateColliders();
-	void UpdateColliders(FComponentSpacePoseContext& Output);
+	void UpdateColliders(FComponentSpacePoseContext& Output, float interScale);
+	void InitializeColliderPositionOld(FComponentSpacePoseContext& Output);
+	void UpdateColliderInfoAtEnd();
 
 	void CreateConstraints();
 	void UpdateConstraints();
-	void UpdateCollision();
+	void UpdateCollision(float collisionSubDelta);
 	void ForceFixConstraints();
-	void UpdateSurfaceCollision();
+	void UpdateSurfaceCollision(float collisionSubDelta);
 
 	void CreateSurfaceConstraints();
 	void Debug_DrawSurfaceTriangle(FVector a, FVector b, FVector c);
@@ -478,6 +490,7 @@ private:
 	void CreateConstraintBendingHorizontal(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision);
 	void CreateConstraintShear(TArray<SPCRConstraint>& Out, TArray<TArray<SPCRPoint>>& PointsTbl, bool IsCollision);
 
+	void UpdateLockAngles();
 	void LockAngles(SPCRPoint* spcrPoint);
 
 public:

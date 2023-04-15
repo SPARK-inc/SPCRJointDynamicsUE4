@@ -1,9 +1,9 @@
 # SPCRJointDynamics for UE4  
-A bone physics engine for cloth.  
+Real looking cloth physics engine for Unreal.
   
 ## Overview  
-Do you want to simulate cloth in your game with physics? Then this is the plugin for you.  
-SPCRJointDynamics requires a basic bone setup, and you are good to go.  
+Are you searching for a real cloth dynamics solution, so that character's cloth in your game will behave like a real cloth. Then this is the plugin for you.
+SPCRJointDynamics offers you the exact behaviour, which requires a basic bone setup, and you are ready to go.  
 * Unreal Engine 4.21 and above.  
   
 ## License  
@@ -12,13 +12,14 @@ SPCRJointDynamics requires a basic bone setup, and you are good to go.
 ## Purpose of development  
 ![](./image/ue4_physics.gif)  
 There was a requirement in one of our games that the skirt of the character should perfectly interact with the character’s movement.  
+So we thought to develop a plugin for it and also allow others to use it.
   
 ## Unity plugin  
 Get the Unity Plugin: https://github.com/SPARK-inc/SPCRJointDynamics  
   
 ## Specifications  
-SPCRJointDynamics uses cross simulation algorithm (mass-spring-damper model) to animate the bones in real-time. We mainly focused on the overall appearance rather than the physically accurate behaviors for direct use for skirts and hairs.  
-Since adding bones is still a manual process in most 3D software, and therefore bones are not always correctly aligned. To overcome this issue, we made a constraint base plugin.  
+SPCRJointDynamics uses cross simulation algorithm (mass-spring-damper model) to animate the bones in real-time. We are mainly focusing on the overall appearance rather than the physically accurate behaviors for direct use for skirts and hairs.  
+Since adding bones is still a manual process in most 3D softwares, and therefore bones are not always correctly aligned. To overcome this issue, we made a constraint base plugin.  
   
 ## Each constraint.  
 ![](./image/constraint_en.png)  
@@ -26,7 +27,7 @@ Since adding bones is still a manual process in most 3D software, and therefore 
 ## Advance Preparation  
 ![](./image/SPCRNodeSetup.png)  
   
-The plugin is developed to work with an animation blueprint graph, you can search the SPCRJointDynamics node in the blueprint node search box and add it to the animation blueprint graph. And once all the parameters are set, connect the node to the Output Pose node to run the simulation.  
+The plugin is developed to work with an animation blueprint graph, you can search the SPCRJointDynamics node in the animation blueprint node search box to add it. And once all the parameters are set, connect the node to the Output Pose node to run the simulation.  
   
 ## How to use  
 Basic bone setup  
@@ -34,11 +35,11 @@ Basic bone setup
   
 Dynamics property is the settings related to the bone setup.  
 Click on the [+] icon on the Joint Pairs array to add a new element.  
-Then select the first bone from the bone hierarchy in the Root Bone and the last child bone from the same bone hierarchy in the End Bone as one pair, the bones in-between them will automatically be connected like a chain.  
+Please select the 'Root Bone' and 'End Bone' from the skeletal bone hierarchy as one pair, in-between bones (child bones of selected 'Root Bone') will be connected internally.
   
-**Fixed point index:** This is an index of fixed bones (no physics applied) from the root. By default, the value is 0, which means only the root bone will be fixed. But you can put any index value, up to that index all bones will be fixed. In other words, no physics will apply to those bones.  
+**Fixed point index:** An index of fixed bones (no physics) from the root. By default, the value is 0, which means only the root bone is fixed. But you can set any index value, up to that bone index no physics will get applied. 
   
-**Structural vertical step count:** The number of vertical structural constraints. Higher value makes it more stable but has some performance impact.  
+**Structural vertical step count:** Number of vertical structural constraints. Higher value makes it more stable but has some performance impact.  
   
 **Joint Loop:** Whether to make a bone loop. If true, connects the first and the last bone.  
 For example, a round-shaped skirt requires all bones to be connected in a loop, so that all the bones will move seamlessly without occurring cloth tearing. However, cloak-like clothes are not rounded in shape, therefore a joint loop is not necessary in this case.  
@@ -62,44 +63,45 @@ For commonly used items such as cloth and hair, it is usually desirable to speci
   
 **Note:** In SPCR joint dynamics, you can assign different values to each bone by assigning the float curve asset in the respective field. The value for the tip bone will be calculated from the 0th keyframe and the value for the end bone will be calculated from the 1st keyframe. And the value for the in-between bones will be calculated from the 0~1 ratio.  
   
-**Collision:** You also can enable or disable the collision checks in each restraint. Even though the restraint is running, but if the collision check box is off, the collision will not occur.  
+**Collision:** Enables or disables the collision check for each restraint. Even though the restraint is running, but if the collision check box is off, the collision will not occur.  
   
-Use-case for the hair typed bones (hairs in the example scene): in the case of hairs, turn on the collision only for structural constraints. No need to enable a collision check for shear and blend restraints. Since they are just used for maintaining the shape.  
+Use-case for the hair typed bones (hairs in the example scene): in this case, turn on the collision only for the structural constraints. No need to enable a collision for shear and blend restraints. Since they are being used to maintaining the shape.  
   
 **Parameter settings**  
 ![](./image/ParameterSetup.png)  
   
-**Max Iterations:** Number of iterations of the physics process. It improves the quality of the physics simulation by paying the performance costs.  
+**Max Iterations:** Number of physics calculation iterations per frame. Improves the physics simulation quality in return of performance cost.  
+**Collision Sub Unterpolation:** Number of sub collision iterations per frame.
+**Collision LOD:** Collision level of details.
   
-**Force Limit Length:** Prevents the changes in the length.  
-**Resistance:** The value for resisting to move. Value is in between [0 ~ 1]  
-**Hardness:** Sets how hard the bone is to move. Value is in between [0 ~ 1]  
+**Force Limit Length:** Prevents the changes in the constraint length.  
+**Resistance:** Bones will resist to move. Value in between [0 ~ 1]  
+**Hardness:** Bones will be harder to move. Value in between [0 ~ 1]  
 **Gravity:** Gravity vector for physics.  
 **Wind Force:** Wind force vector for physics.  
-**Wind force speed:** Wind speed for the current wind (wind speed scalar).  
-**Use surface collision:** Whether to use surface collision for this node.  
+**Wind force speed:** Scalar property to set wind speed.  
+**Use surface collision:** Whether to use surface collision. (An advanced collision check, please enable this if the constraint collision is not giving you desired result.)
   
 **Collider settings**  
 ![](./image/ColliderSetup.png)  
   
-**Write Id:** If you wanted to use this SPCR node’s colliders in other SPCR nodes, then you need to specify a unique write Id (other than 0) for this collider. By setting this value, the collider array (Bodies) will be exposed as a global.  
-**Read Id:** If you wanted to access other SPCR node’s colliders in this node then you need to specify that node’s unique write Id in the Read ID array.  
-**Point Collision:** Allow collision with bones. The most performant collision check process but the collision is not very smooth compared to surface collision.  
-**Bodies:** Array of colliders. If the height is 0.0 then the collider will be treated as a sphere collider and if the height is greater than 0.0 then it will be treated as a capsule collider.  
+**Write Id:** Set an ID (other than 0) to exposes this node's collider(s) globally, in oder to other SPCR node can access it. 
+**Read Id:** Specify an ID which node's collider you would like to access (Please refer 'Write ID' property). Multiple IDs can be added.
+**Bodies:** Array to define colliders. Default is sphere collider, but you can switch to capsule collider by setting the 'height' property's value greater than 0.0f.
   
 **Limit**  
 ![](./image/LimitSetup.png)  
-You can prevent the bone to go beyond a certain angle.  
-**Limit angle:** On/Off checkbox for angle limit.  
-**Angle limit in degree:** Max angle of the bone.  
-**Limit Curve:** Root ~ child curve value for this limit, bone values from 0~1 keyframes.  
-**Limit from root:** If true, then limit the angle from the root bone. Otherwise, limit the angle from the parent bone.  
+Limits the bone movement by setting an locking angle in degree.
+**Limit angle:** On/Off checkbox of the angle limit feature.  
+**Angle limit in degree:** Max movable angle of the bone.  
+**Limit Curve:** 0~1 duration curve to calculate limit multiplier for the bones (Calculates from root to child hierarchy, please check 'Joint Pairs' property).  
+**Limit from root:** If true, then limit the angle from the root bone. Otherwise, limits the angle from the utmost parent bone.  
   
 **Debug Draw**  
-Debug options allow you to visualize the mapped joints.  
-**Debug Draw Constraints:** Draw debug constraints joints.  
-**Debug Draw Colliders:** Draw outline for colliders.  
-**Debug draw surface collision:** Draw surface collision triangles.  
+Debug options which allows you to visualize the mapped joints.  
+**Debug Draw Constraints:** Draws debug constraints joints on the preview window.  
+**Debug Draw Colliders:** Draws outline for the colliders on the preview window.  
+**Debug draw surface collision:** Draws surface collision face on the preview window.  
   
 **List of all parameters**  
 ![](./image/SpcrJointDynamicsAllParameters.png)  
@@ -112,50 +114,56 @@ Please feel free to let us know if you have any questions or suggestions.
   
 # Example of skirt setup procedure  
 ![](./image/setup01.jpg)  
-First, select SPCR Joint Dynamics on AnimBP and create a node.  
+First, please right click on the AnimBP window (empty space), then select 'SPCR Joint Dynamics' option from the popup up menu to add a new SPCR joint dynamics node.  
   
 ![](./image/setup02.jpg)  
-We will set up a pair of bones to perform the physics behavior.  
-In this section, we will pair the root and end bones of the skirt bones and proceed with the settings.  
+Add a new pair entry by clicking [+] icon in front of the 'Joint Pairs' property.
+Please select the skeletal bone in the 'Root Bone' and 'End Bone' fields.
+SPCR physics engine will create a link internally to perform the physics behavior,
+Here, we will pair the root and end bones of the skirt.  
   
 ![](./image/setup03.jpg)  
-Since the skirt is on a circle, check the "Joint Loop" checkbox so that the start and end points are connected.  
+Since the skirts are seamless (round in shape), check the "Joint Loop" checkbox to connect the start and end joints.  
+Please note that, enabling this option for non rounded models like a window curtain (Where we can see all the four corners) may give you an unexpected results.
   
 ![](./image/setup04.jpg)  
-Let's turn on the debug display so that we can visualize the state of the physics constraints here.  
+Let's turn on the debug display so that we can visualize the current setup state of the physics constraints on the preview window.  
   
 ![](./image/setup05.jpg)  
-The constraint state is now shown in lines on the preview screen.  
+As you can see the constraint state is shown in lines (Green debug lines) on the preview window.  
   
 ![](./image/setup06.jpg)  
 We will add the necessary restraints.  
-All the restraints are enabled here, as the skirt will keep its shape to some extent and also support the penetration of the legs.  
+All the restraints are enabled here, as the skirt has to keep its shape at some extent and these constraints also will helps to reduce the probability of legs to come out from the skirts.  
 
 ![](./image/setup07.jpg)  
-You can see in the preview screen that the constraints are correctly applied.  
-However, if you look closely, you can see that the end of the skirt is not constrained.  
+You can see the updated debug constraints on the preview window after updating the constraints settings.
+However, if you look closely, you can notice that the constrain is not added for the end bones of the skirt.  
 This is because UE4 doesn't import the End Bone, so the end bone is deleted.  
-We could have added virtual bones to the skeleton, but it would have been too expensive to set them up one by one, so we'll take a different approach.  
+Even though Unreal engine allows us to add virtual bones to the skeleton (in the skeleton window), but sometimes it's hard to set them correctly one by one, so we'll take a different approach.  
   
-![](./image/setup08.jpg)  
-By setting the length of the virtual bone to a value greater than or equal to 0 in the "Virtual Bone Length" field, a virtual bone for calculation will be automatically added to the end.  
+![](./image/setup08.jpg) 
+We can use the 'Virtual Bone Length' property to add new virtual bones for the physics calculation. Set the length of the virtual bones to a value greater than or equal to 0.
+New virtual bones will be get added at the end. (Please note that these virtual bones are added just for the SPCR joint dynamics, and it does not edit the actual skeleton.) 
   
 ![](./image/setup09.jpg)  
-A virtual bone has been added at the specified length from the end bone and a new constraint has been generated.  
+As you can see in the above screenshot, a new virtual bone has been added at the specified length (from the end bone) and constraint also has been generated for the same.
   
 ![](./image/setup10.jpg)  
 The next step is to set the restraint force for each restraint.  
-The default value of 1.0 will result in a stiff skirt because it will try to maintain its initial shape.  
-This is fine if the skirt contains panniers, but in this case we want a softer skirt, so we have lowered the value.  
+The default value is 1.0, which will result a stiff looking skirt, since all the bones will try to maintain their original position.  
+The default value works fine if the skirt has pannier, but please consider to use lower values if your skirt is softer (If you want to bend the skirt smoothly).  
   
 ![](./image/setup11.jpg)  
-The curve that you set should also be softer towards the end.  
+For smooth blending cloths, set the decline curve.
+In our example, the curve is bending towards the lower value at the end which is also a result of a softer constraints at the end. (curve range in 0~1).
 
 ![](./image/setup12.jpg)  
-The last step is to set up the collider.  
-Add the collider and set the target bone and size.  
-It would be a good idea to add it in a way that it follows the foot.  
+The last step is to set up the colliders.  
+Add the new collider by clicking the [+] icon at the front of the 'Bodies' field.
+Then set the target bone, and collider size. 
+Please consider setting foot as a target bone if you wanted to add a collider on the foot. 
 
 ![](./image/setup13.jpg)  
-This is the screenshot of the setting for the legs, but the skirt doesn't poke through anymore.  
-It's a good idea to add colliders to the waist and abdomen in case the skirt comes up.  
+This is the screenshot after adding colliders on the legs, and as you can see the legs are no longer poking through the skirt.  
+It's also a good idea to add colliders to the waist and abdomen bones in case the skirt comes up.  

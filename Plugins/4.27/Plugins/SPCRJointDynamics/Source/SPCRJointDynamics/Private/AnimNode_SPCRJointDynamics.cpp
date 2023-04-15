@@ -26,6 +26,7 @@ DECLARE_CYCLE_STAT(TEXT("UpdateCollision"), STAT_SPCR_UPDATE_COLLISION, STATGROU
 DECLARE_CYCLE_STAT(TEXT("UpdateSurfaceCollision"), STAT_SPCR_UPDATE_SURFACE_COLLISION, STATGROUP_SPCRJointDynamics);
 DECLARE_CYCLE_STAT(TEXT("ForceFixConstraints"), STAT_SPCR_FORCE_FIX_CONSTRAINTS, STATGROUP_SPCRJointDynamics);
 DECLARE_CYCLE_STAT(TEXT("ApplyToBone"), STAT_SPCR_APPLY_TO_BONE, STATGROUP_SPCRJointDynamics);
+DECLARE_CYCLE_STAT(TEXT("UpdateColliderInfoAtEnd"), STAT_SPCR_UPDATE_INFO_AT_END, STATGROUP_SPCRJointDynamics);
 DECLARE_CYCLE_STAT(TEXT("HandleDebugDraw"), STAT_SPCR_HANLDE_DEBUG_DRAW, STATGROUP_SPCRJointDynamics);
 
 //======================================================================================
@@ -34,7 +35,7 @@ DECLARE_CYCLE_STAT(TEXT("HandleDebugDraw"), STAT_SPCR_HANLDE_DEBUG_DRAW, STATGRO
 FAnimNode_SPCRJointDynamics::FAnimNode_SPCRJointDynamics()
 {
 	_bRequireResetPose = true;
-	_ResetDelay = 0.3f;
+	_ResetDelay = 3.0f / 60.0f;
 	_DeltaTime = 0.0f;
 	_WindForceRadians = 0.0f;
 
@@ -103,6 +104,8 @@ void FAnimNode_SPCRJointDynamics::OnResetAll(FComponentSpacePoseContext& Output)
 
 	//表面コリジョン
 	CreateSurfaceConstraints();
+
+	InitializeColliderPositionOld(Output);
 }
 
 //======================================================================================
@@ -117,9 +120,6 @@ void FAnimNode_SPCRJointDynamics::EvaluateSkeletalControl_AnyThread(FComponentSp
 	{
 		return;
 	}
-
-	// コリジョン
-	UpdateColliders(Output);
 
 	// 全制御点の更新
 	_RestDeltaTime += _DeltaTime;
@@ -145,20 +145,32 @@ void FAnimNode_SPCRJointDynamics::EvaluateSkeletalControl_AnyThread(FComponentSp
 		UpdateControlPoints(Output, ActiveWindForce, ONE_STEP_DELTA);
 
 		// 拘束の更新
-		for (int32 iRelax = MaxIterations - 1; iRelax >= 0; --iRelax)
+		for(int32 iRelax = 1; iRelax <= MaxIterations; iRelax++)
 		{
+			float colliderDelta = (float)iRelax / (float)MaxIterations;
+			// コリジョントランスフォーム補間
+			UpdateColliders(Output, colliderDelta);
+
 			UpdateConstraints();
+			// コリジョン
+			if ((i % CollisionLOD) == 0)
+			{
+				for (int32 iColIteration = 1; iColIteration <= CollisionSubInterations; iColIteration++)
+				{
+					float subColliderDelta = (float)iColIteration / (float)CollisionSubInterations;
+					UpdateCollision(subColliderDelta);
+
+					if (bUseSurfaceCollision)
+					{
+						UpdateSurfaceCollision(subColliderDelta);
+					}
+				}
+			}
 		}
 
-		// コリジョン
-		if ((i % CollisionLOD) == 0)
+		if (bLimitAngle)
 		{
-			UpdateCollision();
-
-			if (bUseSurfaceCollision)
-			{
-				UpdateSurfaceCollision();
-			}
+			UpdateLockAngles();
 		}
 	}
 
@@ -171,7 +183,12 @@ void FAnimNode_SPCRJointDynamics::EvaluateSkeletalControl_AnyThread(FComponentSp
 	// 骨のトランスフォームに適用
 	ApplyToBone(Output, OutBoneTransforms);
 
+	//Updating the collider Prev Positions
+	UpdateColliderInfoAtEnd();
+
+#if WITH_EDITOR
 	HandleDebugDraw();
+#endif
 }
 
 //======================================================================================
@@ -212,7 +229,7 @@ void FAnimNode_SPCRJointDynamics::Initialize_AnyThread(const FAnimationInitializ
 	FAnimNode_SkeletalControlBase::Initialize_AnyThread(Context);
 
 	_bRequireResetPose = true;
-	_ResetDelay = 0.3f;
+	_ResetDelay = 3.0f / 60.0f;
 	_DeltaTime = 0.0f;
 	_RestDeltaTime = 0.0f;
 	_WindForceRadians = 0.0f;
@@ -241,7 +258,7 @@ void FAnimNode_SPCRJointDynamics::ResetDynamics(ETeleportType InTeleportType)
 	Super::ResetDynamics(InTeleportType);
 
 	_bRequireResetPose = true;
-	_ResetDelay = 0.3f;
+	_ResetDelay = 3.0f / 60.0f;
 	_DeltaTime = 0.0f;
 	_RestDeltaTime = 0.0f;
 }
@@ -270,7 +287,7 @@ void FAnimNode_SPCRJointDynamics::GatherDebugData(FNodeDebugData& DebugData)
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Output)
+void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Output, float colliderDelta)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_COLLIDER);
 
@@ -278,7 +295,31 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 		FSPCRCollider& Target,
 		const FVector& Base,
 		const FVector& X, const FVector& Y, const FVector& Z,
-		float Radius)
+		float Radius,
+		float colliderDelta)
+	{
+		const auto Origin = Base;
+		//const auto XAxis = X.GetSafeNormal();
+		//const auto YAxis = Y.GetSafeNormal();
+		//const auto ZAxis = Z.GetSafeNormal();
+
+		const auto XScale = X.Size();
+		const auto YScale = Y.Size();
+		const auto ZScale = Z.Size();
+		const auto SphereRadius = Radius * FMath::Max(XScale, FMath::Max(YScale, ZScale));
+		Target.Radius = SphereRadius;
+		Target.Height = 0.0f;
+
+		Target.PositionPrev = Target.Position;
+		Target.Position = FMath::Lerp(Target.PositionPrevFrame, Origin, colliderDelta);
+	};
+
+	auto UpdateCapsuleTransform = [](
+		FSPCRCollider& Target,
+		const FVector& Base,
+		const FVector& X, const FVector& Y, const FVector& Z,
+		float Radius, float HalfHeight,
+		float colliderDelta)
 	{
 		const auto Origin = Base;
 		const auto XAxis = X.GetSafeNormal();
@@ -288,10 +329,113 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 		const auto XScale = X.Size();
 		const auto YScale = Y.Size();
 		const auto ZScale = Z.Size();
+		const auto CapsuleRadius = Radius * FMath::Max(XScale, YScale);
+		HalfHeight *= ZScale;
+
+		const auto TopEnd = Origin + (HalfHeight * ZAxis);
+		const auto BottomEnd = Origin - (HalfHeight * ZAxis);
+
+		Target.Radius = CapsuleRadius;
+		Target.Height = HalfHeight * 2.0f;
+
+		Target.PositionPrev = Target.Position;
+		Target.DirectionPrev = Target.Direction;
+		Target.Position = FMath::Lerp(Target.PositionPrevFrame, BottomEnd, colliderDelta);
+		Target.Direction = FMath::Lerp(Target.DirectionPrevFrame, TopEnd - BottomEnd, colliderDelta);
+	};
+
+	const auto& Pose = Output.Pose.GetPose();
+	const auto& BoneContainer = Pose.GetBoneContainer();
+
+	const int32 ColliderInfosNum = _ColliderInfos.Num();
+	for (int32 i = 0; i < ColliderInfosNum; ++i)
+	{
+		auto& Info = _ColliderInfos[i];
+		const FCompactPoseBoneIndex BoneIndex = Info.TargetBone.GetCompactPoseIndex(BoneContainer);
+		if (BoneIndex == -1) continue;
+
+		const auto& BoneCSTransform = Output.Pose.GetComponentSpaceTransform(BoneIndex);
+		const auto BoneTransformInWorldSpace = BoneCSTransform * Output.AnimInstanceProxy->GetComponentTransform();
+		const auto ColliderTransformInWorldSpace = Info.LocalTransform * BoneTransformInWorldSpace;
+
+		_Colliders[i].bCapsule = Info.Height > SPCR_EPSILON;
+
+		if (_Colliders[i].bCapsule)
+		{
+			UpdateCapsuleTransform(
+				_Colliders[i],
+				ColliderTransformInWorldSpace.GetLocation(),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::X),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Y),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Z),
+				Info.Radius,
+				Info.Height * 0.5f,
+				colliderDelta);
+
+			if (bDebugDrawColliders && GWorld->IsPlayInEditor())
+			{
+				DrawDebugCapsule(
+					GWorld,
+					ColliderTransformInWorldSpace.GetLocation(),
+					_Colliders[i].Height * 0.5f + _Colliders[i].Radius,
+					_Colliders[i].Radius,
+					ColliderTransformInWorldSpace.GetRotation(),
+					FColor::Red);
+			}
+		}
+		else
+		{
+			UpdateSphereTransform(
+				_Colliders[i],
+				ColliderTransformInWorldSpace.GetLocation(),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::X),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Y),
+				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Z),
+				Info.Radius,
+				colliderDelta);
+
+			if (bDebugDrawColliders && GWorld->IsPlayInEditor())
+			{
+				DrawDebugSphere(
+					GWorld,
+					_Colliders[i].Position,
+					_Colliders[i].Radius,
+					16,
+					FColor::Red);
+			}
+		}
+	}
+
+	if (WriteID != 0)
+	{
+		SetGlobalColliders(WriteID, _Colliders);
+	}
+}
+
+//======================================================================================
+//
+//======================================================================================
+
+void FAnimNode_SPCRJointDynamics::InitializeColliderPositionOld(FComponentSpacePoseContext& Output)
+{
+	auto UpdateSphereTransform = [](
+		FSPCRCollider& Target,
+		const FVector& Base,
+		const FVector& X, const FVector& Y, const FVector& Z,
+		float Radius)
+	{
+		const auto Origin = Base;
+		//const auto XAxis = X.GetSafeNormal();
+		//const auto YAxis = Y.GetSafeNormal();
+		//const auto ZAxis = Z.GetSafeNormal();
+
+		const auto XScale = X.Size();
+		const auto YScale = Y.Size();
+		const auto ZScale = Z.Size();
 		const auto SphereRadius = Radius * FMath::Max(XScale, FMath::Max(YScale, ZScale));
 		Target.Radius = SphereRadius;
 		Target.Height = 0.0f;
-		Target.Position = Origin;
+		Target.PositionPrevFrame = Origin;
 	};
 
 	auto UpdateCapsuleTransform = [](
@@ -316,8 +460,9 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 
 		Target.Radius = CapsuleRadius;
 		Target.Height = HalfHeight * 2.0f;
-		Target.Position = BottomEnd;
-		Target.Direction = TopEnd - BottomEnd;
+
+		Target.PositionPrevFrame = BottomEnd;
+		Target.DirectionPrevFrame = TopEnd - BottomEnd;
 	};
 
 	const auto& Pose = Output.Pose.GetPose();
@@ -346,17 +491,6 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Z),
 				Info.Radius,
 				Info.Height * 0.5f);
-
-			if (bDebugDrawColliders && GWorld->IsPlayInEditor())
-			{
-				DrawDebugCapsule(
-					GWorld,
-					ColliderTransformInWorldSpace.GetLocation(),
-					_Colliders[i].Height * 0.5f + _Colliders[i].Radius,
-					_Colliders[i].Radius,
-					ColliderTransformInWorldSpace.GetRotation(),
-					FColor::Red);
-			}
 		}
 		else
 		{
@@ -367,22 +501,29 @@ void FAnimNode_SPCRJointDynamics::UpdateColliders(FComponentSpacePoseContext& Ou
 				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Y),
 				ColliderTransformInWorldSpace.GetScaledAxis(EAxis::Z),
 				Info.Radius);
-
-			if (bDebugDrawColliders && GWorld->IsPlayInEditor())
-			{
-				DrawDebugSphere(
-					GWorld,
-					_Colliders[i].Position,
-					_Colliders[i].Radius,
-					16,
-					FColor::Red);
-			}
 		}
 	}
 
 	if (WriteID != 0)
 	{
 		SetGlobalColliders(WriteID, _Colliders);
+	}
+}
+
+//======================================================================================
+//
+//======================================================================================
+void FAnimNode_SPCRJointDynamics::UpdateColliderInfoAtEnd()
+{
+	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_INFO_AT_END);
+
+	const int32 ColliderInfosNum = _Colliders.Num();
+	for (int32 i = 0; i < ColliderInfosNum; ++i)
+	{
+		auto& Info = _Colliders[i];
+
+		Info.PositionPrevFrame = Info.Position;
+		Info.DirectionPrevFrame = Info.Direction;
 	}
 }
 
@@ -548,7 +689,7 @@ void FAnimNode_SPCRJointDynamics::UpdateConstraints()
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::UpdateCollision()
+void FAnimNode_SPCRJointDynamics::UpdateCollision(float collisionSubDelta)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_COLLISION);
 
@@ -565,17 +706,17 @@ void FAnimNode_SPCRJointDynamics::UpdateCollision()
 		auto WeightB = pPointB->Weight;
 		if (WeightA + WeightB < 0.001f) continue;
 
-		auto PointCollisionExe = [&](const TArray<FSPCRCollider>& ColliderTbl)
+		auto PointCollisionExe = [&](const TArray<FSPCRCollider>& ColliderTbl, const float CollisionDelta)
 		{
 			for (auto&& Collider : ColliderTbl)
 			{
 				if (WeightA > 0.0f)
 				{
-					PushoutFromCollider(Collider, pPointA->Position);
+					PushoutFromCollider(Collider, pPointA->Position, CollisionDelta);
 				}
 				if (WeightB > 0.0f)
 				{
-					PushoutFromCollider(Collider, pPointB->Position);
+					PushoutFromCollider(Collider, pPointB->Position, CollisionDelta);
 				}
 			}
 		};
@@ -586,7 +727,7 @@ void FAnimNode_SPCRJointDynamics::UpdateCollision()
 			{
 				float Radius;
 				FVector pointOnLine, pointOnCollider;
-				if (CollisionDetection(Collider, pPointA->Position, pPointB->Position, pointOnLine, pointOnCollider, Radius))
+				if (CollisionDetection(Collider, pPointA->Position, pPointB->Position, pointOnLine, pointOnCollider, Radius, collisionSubDelta))
 				{
 					auto Pushout = pointOnLine - pointOnCollider;
 					auto PushoutDistance = Pushout.Size();
@@ -617,10 +758,10 @@ void FAnimNode_SPCRJointDynamics::UpdateCollision()
 			for (auto&& ID : ReadID)
 			{
 				GetGlobalColliders(ID, _ExternalColliders);
-				PointCollisionExe(_ExternalColliders);
+				PointCollisionExe(_ExternalColliders, collisionSubDelta);
 			}
 		}
-		PointCollisionExe(_Colliders);
+		PointCollisionExe(_Colliders, collisionSubDelta);
 
 		{
 			float Friction = 0.0f;
@@ -667,7 +808,7 @@ void FAnimNode_SPCRJointDynamics::ForceFixConstraints()
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
+void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision(float CollisionSubDelta)
 {
 	SCOPE_CYCLE_COUNTER(STAT_SPCR_UPDATE_SURFACE_COLLISION);
 
@@ -737,17 +878,19 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 		return FVector::CrossProduct(AB, CA);
 	};
 
-	auto CheckCollision = [&](FVector& PointPosA, FVector& PointPosB, FVector& PointPosC, FSPCRCollider& Collider, FVector& OutIntersectionPoint, FVector& OutPointOnCollider, FVector& OutPushOut, float& OutRadius)
+	auto CheckCollision = [&](FVector& PointPosA, FVector& PointPosB, FVector& PointPosC, FSPCRCollider& Collider, FVector& OutIntersectionPoint, FVector& OutPointOnCollider, FVector& OutPushOut, float& OutRadius, float CollisionDelta)
 	{
 		SPCRRay Ray;
 		float Enter = 0;
-		OutPointOnCollider = Collider.Position;
+		FVector ColliderPos = FMath::Lerp(Collider.PositionPrev, Collider.Position, CollisionDelta);
+		OutPointOnCollider = ColliderPos;
 		OutRadius = Collider.Radius;
 
-		const FVector ColliderDir = Collider.Direction.GetSafeNormal();
+		const FVector ColliderDir = FMath::Lerp(Collider.DirectionPrev, Collider.Direction, CollisionDelta);
+		const FVector ColliderDirNorm = ColliderDir.GetSafeNormal();
 
 		FVector TriangleCenter = CenterOfTheTriangle(PointPosA, PointPosB, PointPosC);
-		FVector ColliderDirFromTriCenter = (Collider.Position - TriangleCenter);
+		FVector ColliderDirFromTriCenter = (ColliderPos - TriangleCenter);
 		ColliderDirFromTriCenter.Normalize();
 
 		FVector PlaneNormal = GetPlaneNormal(PointPosA, PointPosB, PointPosC);
@@ -759,7 +902,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 
 		if (Collider.bCapsule)
 		{
-			float Side = FVector::DotProduct(ColliderDir, PlaneNormal) * TriCenterDotP;
+			float Side = FVector::DotProduct(ColliderDirNorm, PlaneNormal) * TriCenterDotP;
 			ColliderDirFromTriCenter = PlaneNormal * TriCenterDotP * -1;
 			ColliderDirFromTriCenter.Normalize();
 
@@ -767,7 +910,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 			if (Side < 0)
 			{
 				OutRadius = Collider.Radius;
-				OutPointOnCollider = Collider.Position + (Collider.Direction * 0.5) * 2;
+				OutPointOnCollider = ColliderPos + (ColliderDir * 0.5) * 2;
 			}
 			else
 			{
@@ -793,8 +936,8 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 				if (Collider.SurfaceColliderType != 0)
 				{
 					OutPointOnCollider = TempPointOnCollider;
-					FVector EndVec = Collider.Position + (Collider.Direction * 0.5f) * 2;
-					FVector CollDirVec = Collider.Direction;
+					FVector EndVec = ColliderPos + (ColliderDir * 0.5f) * 2;
+					FVector CollDirVec = ColliderDir;
 
 					if (Collider.SurfaceColliderType == 2)//Pull
 					{
@@ -845,7 +988,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 			//Handling Sphere Surface collision here
 			ColliderDirFromTriCenter = PlaneNormal * TriCenterDotP * -1;
 
-			Ray = SPCRRay(Collider.Position, ColliderDirFromTriCenter);
+			Ray = SPCRRay(ColliderPos, ColliderDirFromTriCenter);
 			FVector PlaneNormalInverse = PlaneNormal * -1;
 
 			if (Ray.SimpleRaycast(PlaneNormalInverse, PlaneDistanceFromOrigin, /*Out*/Enter))
@@ -866,7 +1009,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 		return false;
 	};
 
-	auto HandleSurfaceCollision = [&](TArray<SPCRPoint*>& TrianglePoints, FSPCRCollider& Collider)
+	auto HandleSurfaceCollision = [&](TArray<SPCRPoint*>& TrianglePoints, FSPCRCollider& Collider, float CollisionDelta)
 	{
 		FVector IntersectionPoint = FVector::ZeroVector;
 		FVector PointOnCollider = FVector::ZeroVector;
@@ -879,7 +1022,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 			auto& pointB = TrianglePoints[iTriangle + 1];
 			auto& pointC = TrianglePoints[iTriangle + 2];
 
-			if (CheckCollision(pointA->Position, pointB->Position, pointC->Position, Collider, IntersectionPoint, PointOnCollider, PushOut, Radius))
+			if (CheckCollision(pointA->Position, pointB->Position, pointC->Position, Collider, IntersectionPoint, PointOnCollider, PushOut, Radius, CollisionDelta))
 			{
 				FVector TriangleCenter = CenterOfTheTriangle(pointA->Position, pointB->Position, pointC->Position);
 				float PushOutmagnitude = PushOut.Size();
@@ -919,7 +1062,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 		for (int32 iCollider = 0; iCollider < ColliderNum; iCollider++)
 		{
 			auto& Collider = _Colliders[iCollider];
-			HandleSurfaceCollision(TrianglePoints, Collider);
+			HandleSurfaceCollision(TrianglePoints, Collider, CollisionSubDelta);
 		}
 
 		if (ReadID.Num() > 0)
@@ -930,7 +1073,7 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision()
 				for (int32 iCollider = 0; iCollider < _ExternalColliders.Num(); iCollider++)
 				{
 					auto& Collider = _ExternalColliders[iCollider];
-					HandleSurfaceCollision(TrianglePoints, Collider);
+					HandleSurfaceCollision(TrianglePoints, Collider, CollisionSubDelta);
 				}
 			}
 		}
@@ -997,7 +1140,6 @@ void FAnimNode_SPCRJointDynamics::ApplyToBone(FComponentSpacePoseContext& Output
 			}
 
 			Point.Transform.SetLocation(Point.CSPosition);
-			LockAngles(&Point);
 		}
 	}
 
@@ -1012,9 +1154,26 @@ void FAnimNode_SPCRJointDynamics::ApplyToBone(FComponentSpacePoseContext& Output
 //======================================================================================
 //
 //======================================================================================
+void FAnimNode_SPCRJointDynamics::UpdateLockAngles()
+{
+	for (auto&& Points : _PointsTbl)
+	{
+		for (auto&& Point : Points)
+		{
+			if (Point.bVirtual)
+				continue;
+			LockAngles(&Point);
+		}
+	}
+}
+
+
+//======================================================================================
+//
+//======================================================================================
 void FAnimNode_SPCRJointDynamics::LockAngles(SPCRPoint* spcrPoint)
 {
-	if (spcrPoint->pParent == nullptr || !bLimitAngle)
+	if (spcrPoint->pParent == nullptr)
 		return;
 
 	FVector SuperParentPosition = spcrPoint->pParent->pParent != nullptr ? spcrPoint->pParent->pParent->Position : spcrPoint->pParent->Position;
@@ -1057,20 +1216,24 @@ void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FVector& Center, float
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FSPCRCollider& Collider, FVector& Point)
+void FAnimNode_SPCRJointDynamics::PushoutFromSphere(const FSPCRCollider& Collider, FVector& Point, float CollisionSubDelta)
 {
-	PushoutFromSphere(Collider.Position, Collider.Radius, Point);
+	FVector ColliderPosition = FMath::Lerp(Collider.PositionPrev, Collider.Position, CollisionSubDelta);
+	PushoutFromSphere(ColliderPosition, Collider.Radius, Point);
 }
 
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::PushoutFromCapsule(const FSPCRCollider& Collider, FVector& Point)
+void FAnimNode_SPCRJointDynamics::PushoutFromCapsule(const FSPCRCollider& Collider, FVector& Point, float CollisionSubDelta)
 {
-	auto capsuleVec = Collider.Direction;
+	//Calculate interpolate value for collider direction
+	auto capsuleVec = FMath::Lerp(Collider.DirectionPrev, Collider.Direction, CollisionSubDelta);
 	auto capsuleVecNormal = capsuleVec;
 	capsuleVecNormal.Normalize();
-	auto capsulePos = Collider.Position;
+
+	//Calculate interpolate value for collider position
+	auto capsulePos = FMath::Lerp(Collider.PositionPrev, Collider.Position, CollisionSubDelta);
 	auto targetVec = Point - capsulePos;
 	auto distanceOnVec = FVector::DotProduct(capsuleVecNormal, targetVec);
 	if (distanceOnVec <= 0.0f)
@@ -1104,22 +1267,22 @@ void FAnimNode_SPCRJointDynamics::PushoutFromCapsule(const FSPCRCollider& Collid
 //======================================================================================
 //
 //======================================================================================
-void FAnimNode_SPCRJointDynamics::PushoutFromCollider(const FSPCRCollider& Collider, FVector& Point)
+void FAnimNode_SPCRJointDynamics::PushoutFromCollider(const FSPCRCollider& Collider, FVector& Point, float CollisionDelta)
 {
 	if (Collider.bCapsule)
 	{
-		PushoutFromCapsule(Collider, Point);
+		PushoutFromCapsule(Collider, Point, CollisionDelta);
 	}
 	else
 	{
-		PushoutFromSphere(Collider, Point);
+		PushoutFromSphere(Collider, Point, CollisionDelta);
 	}
 }
 
 //======================================================================================
 //
 //======================================================================================
-bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collider, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius)
+bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collider, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius, float collisionDelta)
 {
 	auto CollisionDetection_Sphere = [](const FVector& SphereCenter, float SphereRadius, const FVector& point1, const FVector& point2, FVector& pointOnLine, FVector& pointOnCollider, float& Radius)
 	{
@@ -1140,8 +1303,8 @@ bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collid
 
 	if (Collider.bCapsule)
 	{
-		auto capsuleDir = Collider.Direction;
-		auto capsulePos = Collider.Position;
+		auto capsuleDir = FMath::Lerp(Collider.DirectionPrev, Collider.Direction, collisionDelta);
+		auto capsulePos = FMath::Lerp(Collider.PositionPrev, Collider.Position, collisionDelta);
 		auto pointDir = point2 - point1;
 
 		if (CollisionDetection_Sphere(capsulePos, Collider.Radius, point1, point2, pointOnLine, pointOnCollider, Radius))
@@ -1174,7 +1337,8 @@ bool FAnimNode_SPCRJointDynamics::CollisionDetection(const FSPCRCollider& Collid
 	}
 	else
 	{
-		return CollisionDetection_Sphere(Collider.Position, Collider.Radius, point1, point2, pointOnLine, pointOnCollider, Radius);
+		auto capsulePos = FMath::Lerp(Collider.PositionPrev, Collider.Position, collisionDelta);
+		return CollisionDetection_Sphere(capsulePos, Collider.Radius, point1, point2, pointOnLine, pointOnCollider, Radius);
 	}
 }
 
@@ -1720,18 +1884,21 @@ void FAnimNode_SPCRJointDynamics::DebugDrawConstraints()
 	// 拘束のデバッグ表示
 	if (bDebugDrawConstraints)
 	{
-		for (int32 iConstraint = 0; iConstraint < _Constraints.Num(); ++iConstraint)
-		{
-			auto& Constraint = _Constraints[iConstraint];
-			auto pPointA = Constraint.pPointA;
-			auto pPointB = Constraint.pPointB;
+		FFunctionGraphTask::CreateAndDispatchWhenReady([=]()
+			{
+				for (int32 iConstraint = 0; iConstraint < _Constraints.Num(); ++iConstraint)
+				{
+					auto& Constraint = _Constraints[iConstraint];
+					auto pPointA = Constraint.pPointA;
+					auto pPointB = Constraint.pPointB;
 
-			DrawDebugLine(
-				GWorld,
-				pPointA->Position,
-				pPointB->Position,
-				FColor::Blue);
-		}
+					DrawDebugLine(
+						GWorld,
+						pPointA->Position,
+						pPointB->Position,
+						FColor::Blue);
+				}
+			}, TStatId(), nullptr, ENamedThreads::GameThread);
 	}
 }
 
@@ -1749,12 +1916,15 @@ void FAnimNode_SPCRJointDynamics::DebugDrawSurfaceCollision()
 {
 	if (bDebugDrawSurfaceCollision)
 	{
-		for (int32 iConstraint = 0; iConstraint < _SurfaceConstraints.Num(); ++iConstraint)
-		{
-			auto& SurfaceCollider = _SurfaceConstraints[iConstraint];
-			Debug_DrawSurfaceTriangle(SurfaceCollider.PointA->Position, SurfaceCollider.PointB->Position, SurfaceCollider.PointC->Position);
-			Debug_DrawSurfaceTriangle(SurfaceCollider.PointC->Position, SurfaceCollider.PointD->Position, SurfaceCollider.PointA->Position);
-		}
+		FFunctionGraphTask::CreateAndDispatchWhenReady([=]()
+			{
+				for (int32 iConstraint = 0; iConstraint < _SurfaceConstraints.Num(); ++iConstraint)
+				{
+					auto& SurfaceCollider = _SurfaceConstraints[iConstraint];
+					Debug_DrawSurfaceTriangle(SurfaceCollider.PointA->Position, SurfaceCollider.PointB->Position, SurfaceCollider.PointC->Position);
+					Debug_DrawSurfaceTriangle(SurfaceCollider.PointC->Position, SurfaceCollider.PointD->Position, SurfaceCollider.PointA->Position);
+				}
+			}, TStatId(), nullptr, ENamedThreads::GameThread);
 	}
 }
 
