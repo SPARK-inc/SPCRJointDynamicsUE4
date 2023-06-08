@@ -30,7 +30,7 @@ void UAnimGraphNode_SPCRJointDynamics::Draw(FPrimitiveDrawInterface* PDI, USkele
 	}
 
 	Super::Draw(PDI, PreviewSkelMeshComp);
-	FAnimNode_SPCRJointDynamics* ActivePreviewNode = GetPreviewNode();
+	FAnimNode_SPCRJointDynamics* ActivePreviewNode = SPCRAnimNode;
 	if (ActivePreviewNode)
 	{
 		TSet<FVector> AlreadyDrawedPoint;
@@ -108,45 +108,19 @@ void UAnimGraphNode_SPCRJointDynamics::GetOnScreenDebugInfo(TArray<FText>& Debug
 	Super::GetOnScreenDebugInfo(DebugInfo, RuntimeAnimNode, PreviewSkelMeshComp);
 }
 
-//FText UAnimGraphNode_SPCRJointDynamics::GetTooltipText() const
-//{
-//	return LOCTEXT("NodeTooltip", "");
-//}
-//
-//FText UAnimGraphNode_SPCRJointDynamics::GetMenuCategory() const
-//{
-//	return LOCTEXT("NodeCategory", "SPCR");
-//}
-
-
-FAnimNode_SPCRJointDynamics* UAnimGraphNode_SPCRJointDynamics::GetPreviewNode() const
-{
-	FAnimNode_SPCRJointDynamics* PreviewNode = nullptr;
-	if (LastPreviewComponent && LastPreviewComponent->GetAnimInstance())
-	{
-		UAnimInstance* Instance = LastPreviewComponent->GetAnimInstance();
-		if (UAnimBlueprintGeneratedClass* Class = Cast<UAnimBlueprintGeneratedClass>(Instance->GetClass()))
-		{
-			PreviewNode = Class->GetPropertyInstance<FAnimNode_SPCRJointDynamics>(Instance, NodeGuid);
-		}
-	}
-	return PreviewNode;
-}
-
 FEditorModeID UAnimGraphNode_SPCRJointDynamics::GetEditorMode() const
 {
 	return SPCRJointDynamics_Editor::REGISTER_MODE_ID;
 }
 
-void UAnimGraphNode_SPCRJointDynamics::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	ReconstructNode();
-}
-
-//void UAnimGraphNode_SPCRJointDynamics::ValidateAnimNodePostCompile(FCompilerResultsLog& MessageLog, UAnimBlueprintGeneratedClass* CompiledClass, int32 CompiledNodeIndex)
+//void UAnimGraphNode_SPCRJointDynamics::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 //{
-//	UAnimGraphNode_SkeletalControlBase::ValidateAnimNodePostCompile(MessageLog, CompiledClass, CompiledNodeIndex);
+//	Super::PostEditChangeProperty(PropertyChangedEvent);
 //}
+
+void UAnimGraphNode_SPCRJointDynamics::CopyNodeDataToPreviewNode(FAnimNode_Base* InPreviewNode)
+{
+	SPCRAnimNode = (FAnimNode_SPCRJointDynamics*)InPreviewNode;
+}
 
 #undef LOCTEXT_NAMESPACE

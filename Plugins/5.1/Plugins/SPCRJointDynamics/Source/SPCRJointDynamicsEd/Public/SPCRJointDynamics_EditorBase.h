@@ -9,9 +9,6 @@
 //======================================================================================
 #include "CoreMinimal.h"
 #include "IAnimNodeEditMode.h"
-#include "UnrealWidgetFwd.h"
-
-#include "AnimationEditMode.h"
 
 //======================================================================================
 //

@@ -31,13 +31,9 @@ class UAnimGraphNode_SPCRJointDynamics : public UAnimGraphNode_SkeletalControlBa
 public:
 	// UEdGraphNode interface
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;
-	//virtual void ValidateAnimNodePostCompile(FCompilerResultsLog& MessageLog, UAnimBlueprintGeneratedClass* CompiledClass, int32 CompiledNodeIndex) override;
-	//virtual FText GetTooltipText() const override;
-	//virtual FText GetMenuCategory() const;
 	// End of UEdGraphNode
 
 	// UAnimGraphNode_SkeletalControlBase interface
-	//virtual FText GetControllerDescription() const override;
 	virtual FEditorModeID GetEditorMode() const override;
 	virtual void Draw(FPrimitiveDrawInterface* PDI, USkeletalMeshComponent* PreviewSkelMeshComp) const override;
 	virtual void GetOnScreenDebugInfo(TArray<FText>& DebugInfo, FAnimNode_Base* RuntimeAnimNode, USkeletalMeshComponent* PreviewSkelMeshComp) const override;
@@ -45,13 +41,15 @@ public:
 	// End of UAnimGraphNode_SkeletalControlBase interface
 
 	// UObject interface
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+	//virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+
+	virtual void CopyNodeDataToPreviewNode(FAnimNode_Base* InPreviewNode) override;
 
 private:
 	UPROPERTY(Transient)
 	mutable USkeletalMeshComponent* LastPreviewComponent = nullptr;
 
-	FAnimNode_SPCRJointDynamics* GetPreviewNode() const;
+	FAnimNode_SPCRJointDynamics* SPCRAnimNode = nullptr;
 
 	void Debug_DrawSurfaceTriangle(FPrimitiveDrawInterface* PDI, FVector& a, FVector& b, FVector& c);
 };

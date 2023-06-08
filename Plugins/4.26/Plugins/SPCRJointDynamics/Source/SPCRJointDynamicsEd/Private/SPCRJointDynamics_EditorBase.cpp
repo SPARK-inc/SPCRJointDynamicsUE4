@@ -29,14 +29,7 @@ SPCRJointDynamics_EditorBase::~SPCRJointDynamics_EditorBase()
 
 ECoordSystem SPCRJointDynamics_EditorBase::GetWidgetCoordinateSystem() const
 {
-	UAnimGraphNode_SkeletalControlBase* skeletalControl = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-	if (skeletalControl != nullptr)
-	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		return (ECoordSystem)skeletalControl->GetWidgetCoordinateSystem(GetAnimPreviewScene().GetPreviewMeshComponent());
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
-	return ECoordSystem::COORD_None;
+	return GetModeManager()->GetCoordSystem();
 }
 
 FWidget::EWidgetMode SPCRJointDynamics_EditorBase::GetWidgetMode() const
@@ -54,62 +47,28 @@ FWidget::EWidgetMode SPCRJointDynamics_EditorBase::ChangeToNextWidgetMode(FWidge
 
 bool SPCRJointDynamics_EditorBase::SetWidgetMode(FWidget::EWidgetMode InWidgetMode)
 {
-	if (AnimGraphNode != nullptr)
-	{
-		UAnimGraphNode_SkeletalControlBase* SkeletalControl = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-		if (SkeletalControl != nullptr)
-		{
-			PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			SkeletalControl->SetWidgetMode(GetAnimPreviewScene().GetPreviewMeshComponent(), InWidgetMode);
-			PRAGMA_ENABLE_DEPRECATION_WARNINGS
-		}
-	}
-	return false;
+	GetModeManager()->SetWidgetMode(InWidgetMode);
+	return true;
 }
 
 FName SPCRJointDynamics_EditorBase::GetSelectedBone() const
 {
-	UAnimGraphNode_SkeletalControlBase* SkeletalController = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-	if (SkeletalController != nullptr)
-	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-		return SkeletalController->FindSelectedBone();
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
 	return FName("");
 }
 
+//Implementation is overridden by SPCRJointDynamics_Editor class
 void SPCRJointDynamics_EditorBase::DoTranslation(FVector& InTranslation)
 {
-	UAnimGraphNode_SkeletalControlBase* SkelControl = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-	if (SkelControl != nullptr)
-	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			SkelControl->DoTranslation(GetAnimPreviewScene().GetPreviewMeshComponent(), InTranslation, (FAnimNode_SkeletalControlBase*)RuntimeNode);
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
 }
 
+//Implementation is overridden by SPCRJointDynamics_Editor class
 void SPCRJointDynamics_EditorBase::DoRotation(FRotator& InRotation)
 {
-	UAnimGraphNode_SkeletalControlBase* SkelControl = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-	if (SkelControl != nullptr)
-	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			SkelControl->DoRotation(GetAnimPreviewScene().GetPreviewMeshComponent(), InRotation, (FAnimNode_SkeletalControlBase*)RuntimeNode);
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
 }
 
+//Implementation is overridden by SPCRJointDynamics_Editor class
 void SPCRJointDynamics_EditorBase::DoScale(FVector& InTranslation)
 {
-	UAnimGraphNode_SkeletalControlBase* SkelControl = Cast<UAnimGraphNode_SkeletalControlBase>(AnimGraphNode);
-	if (SkelControl != nullptr)
-	{
-		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			SkelControl->DoTranslation(GetAnimPreviewScene().GetPreviewMeshComponent(), InTranslation, (FAnimNode_SkeletalControlBase*)RuntimeNode);
-		PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	}
 }
 
 void SPCRJointDynamics_EditorBase::EnterMode(class UAnimGraphNode_Base* InEditorNode, struct FAnimNode_Base* InRuntimeNode)

@@ -54,6 +54,8 @@ protected:
 	FSPCRJointDynamicsBody* GetCurrColliderRuntimeNode();
 	FSPCRJointDynamicsBody* GetCurrColliderGraphNode();
 
+	void CopyGraphNodeValuesToRuntimeNode();
+
 	void DrawHUDText(FCanvas* Canvas, const UFont* Font, const float& charHeight, FText Text, FVector2D& TextPosition);
 
 public:

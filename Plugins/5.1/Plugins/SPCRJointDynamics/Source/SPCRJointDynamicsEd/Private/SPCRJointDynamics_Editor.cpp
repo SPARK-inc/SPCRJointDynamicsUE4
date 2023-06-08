@@ -36,6 +36,33 @@ void SPCRJointDynamics_Editor::EnterMode(class UAnimGraphNode_Base* InEditorNode
 
 	SPCRAnimGraphNode = CastChecked<UAnimGraphNode_SPCRJointDynamics>(InEditorNode);
 	SPCRRuntimeAnimNode = static_cast<FAnimNode_SPCRJointDynamics*>(InRuntimeNode);
+
+	CopyGraphNodeValuesToRuntimeNode();
+}
+
+void SPCRJointDynamics_Editor::CopyGraphNodeValuesToRuntimeNode()
+{
+	if (SPCRAnimGraphNode == nullptr || SPCRRuntimeAnimNode == nullptr)
+		return;
+
+	//Copying the graph node values back to the runtime node so that both the nodes are always sync together
+	int bodies = SPCRAnimGraphNode->Node.Bodies.Num();
+	for (int iBody = 0; iBody < bodies; iBody++)
+	{
+		FSPCRJointDynamicsBody* graphNode = &SPCRAnimGraphNode->Node.Bodies[iBody];
+		FSPCRJointDynamicsBody* runtimeNode = &SPCRRuntimeAnimNode->Bodies[iBody];
+
+		runtimeNode->Transform.SetTranslation(graphNode->Transform.GetTranslation());
+		runtimeNode->Transform.SetRotation(graphNode->Transform.GetRotation());
+		runtimeNode->Transform.SetScale3D(graphNode->Transform.GetScale3D());
+
+		runtimeNode->Radius = graphNode->Radius;
+		runtimeNode->Height = graphNode->Height;
+		runtimeNode->Friction = graphNode->Friction;
+		runtimeNode->SurfaceColliderType = graphNode->SurfaceColliderType;
+		runtimeNode->Location = graphNode->Location;
+		runtimeNode->Rotation = graphNode->Rotation;
+	}
 }
 
 void SPCRJointDynamics_Editor::DoTranslation(FVector& InTranslation)
@@ -73,16 +100,16 @@ void SPCRJointDynamics_Editor::DoRotation(FRotator& InRotation)
 		float RotAngle;
 		InRotation.Quaternion().ToAxisAndAngle(RotAxis, RotAngle);
 		auto MeshBases = SPCRRuntimeAnimNode->ForwardedPose;
-		const FMeshPoseBoneIndex MeshBoneIndex(PreviewMeshComponent->GetBoneIndex(Collider_RuntimeNode->TargetBone.BoneName));
+		const FMeshPoseBoneIndex MeshBoneIndex(PreviewMeshComponent->GetBoneIndex(Colldier_GraphNode->TargetBone.BoneName));
 		const FCompactPoseBoneIndex BoneIndex = MeshBases.GetPose().GetBoneContainer().MakeCompactPoseIndex(MeshBoneIndex);
 
 		const FTransform& BoneTM = BoneIndex >= 0 ? MeshBases.GetComponentSpaceTransform(BoneIndex) : FTransform::Identity;
 		FVector4 BoneSpaceAxis = BoneTM.InverseTransformVectorNoScale(RotAxis);
 		FQuat newRotation(BoneSpaceAxis, RotAngle);
 		newRotation.Normalize();
-		newRotation = newRotation * Collider_RuntimeNode->Transform.GetRotation();
-		Collider_RuntimeNode->Transform.SetRotation(newRotation);
+		newRotation = newRotation * Colldier_GraphNode->Transform.GetRotation();
 		Colldier_GraphNode->Transform.SetRotation(newRotation);
+		Collider_RuntimeNode->Transform.SetRotation(Colldier_GraphNode->Transform.GetRotation());
 	}
 }
 
@@ -90,17 +117,15 @@ void SPCRJointDynamics_Editor::DoScale(FVector& InScale)
 {
 	if (IsValidColliderIndex() && SPCRAnimGraphNode != nullptr && SPCRRuntimeAnimNode != nullptr)
 	{
-		UDebugSkelMeshComponent* PreviewMeshComponent = GetAnimPreviewScene().GetPreviewMeshComponent();
-
 		FSPCRJointDynamicsBody* CTransform_RuntimeNode = GetCurrColliderRuntimeNode();
 		FSPCRJointDynamicsBody* CTransform_GraphNode = GetCurrColliderGraphNode();
 
 		if (CTransform_RuntimeNode == nullptr || CTransform_GraphNode == nullptr)return;
 
-		FTransform BoneTransform = PreviewMeshComponent->GetBoneTransform(CTransform_RuntimeNode->TargetBone.BoneIndex);
+		FVector scaleVal = CTransform_GraphNode->Transform.GetScale3D();
 
-		CTransform_RuntimeNode->Transform.SetScale3D(CTransform_RuntimeNode->Transform.GetScale3D() + InScale);
-		CTransform_GraphNode->Transform.SetScale3D(CTransform_RuntimeNode->Transform.GetScale3D());
+		CTransform_GraphNode->Transform.SetScale3D(CTransform_GraphNode->Transform.GetScale3D() + InScale);
+		CTransform_RuntimeNode->Transform.SetScale3D(CTransform_GraphNode->Transform.GetScale3D());
 	}
 }
 
@@ -147,7 +172,7 @@ void SPCRJointDynamics_Editor::Render(const FSceneView* View, FViewport* Viewpor
 
 		if (IsValidColliderIndex())
 		{
-			FSPCRJointDynamicsBody* Body = GetCurrColliderRuntimeNode();
+			FSPCRJointDynamicsBody* Body = GetCurrColliderGraphNode();
 			if (Body != nullptr)
 			{
 				FTransform BoneTransform = FTransform::Identity;
@@ -240,7 +265,7 @@ bool SPCRJointDynamics_Editor::GetCustomDrawingCoordinateSystem(FMatrix& InMatri
 		return false;
 	}
 
-	FSPCRJointDynamicsBody* CTransform_RuntimeNode = GetCurrColliderRuntimeNode();
+	FSPCRJointDynamicsBody* CTransform_RuntimeNode = GetCurrColliderGraphNode();
 	UDebugSkelMeshComponent* PreviewMeshComponent = GetAnimPreviewScene().GetPreviewMeshComponent();
 
 	if (CTransform_RuntimeNode == nullptr || PreviewMeshComponent == nullptr)return false;
@@ -268,7 +293,7 @@ void SPCRJointDynamics_Editor::DrawHUD(FEditorViewportClient* ViewportClient, FV
 
 	if (IsValidColliderIndex())
 	{
-		FSPCRJointDynamicsBody* collider = GetCurrColliderRuntimeNode();
+		FSPCRJointDynamicsBody* collider = GetCurrColliderGraphNode();
 		if (collider != nullptr)
 		{
 			FString colliderType = collider->Height > 0.0f ? "Capsule" : "Sphere";
