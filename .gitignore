@@ -1,10 +1,11 @@
-MyProject/Intermediate/
-MyProject/Plugins/SPCRJointDynamics/Intermediate/
-MyProject/Saved/
 Plugins/4.26/Plugins/SPCRJointDynamics/Intermediate/
 Plugins/4.27/Plugins/SPCRJointDynamics/Intermediate/
 Plugins/5.0/Plugins/SPCRJointDynamics/Intermediate/
-MyProject/Plugins/SPCRJointDynamics/Binaries/
-MyProject/.vs/
-MyProject/Binaries/
 Plugins/5.1/Plugins/SPCRJointDynamics/Intermediate/
+Plugins/5.2/Plugins/SPCRJointDynamics/Intermediate/
+MyProject/.vs/
+MyProject/Saved/
+MyProject/Binaries/
+MyProject/Intermediate/
+MyProject/Plugins/SPCRJointDynamics/Binaries/
+MyProject/Plugins/SPCRJointDynamics/Intermediate/
