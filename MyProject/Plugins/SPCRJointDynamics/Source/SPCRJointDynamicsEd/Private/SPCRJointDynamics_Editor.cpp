@@ -317,3 +317,9 @@ FSPCRJointDynamicsBody* SPCRJointDynamics_Editor::GetCurrColliderGraphNode()
 	return &SPCRAnimGraphNode->Node.Bodies[SelectedColliderIndex];
 }
 
+bool SPCRJointDynamics_Editor::SupportsPoseWatch() {
+	return false;
+}
+void SPCRJointDynamics_Editor::RegisterPoseWatchedNode(UAnimGraphNode_Base* InEditorNode, FAnimNode_Base* InRuntimeNode) {
+
+}

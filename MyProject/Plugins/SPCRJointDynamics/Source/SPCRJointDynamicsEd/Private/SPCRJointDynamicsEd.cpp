@@ -30,7 +30,8 @@ IMPLEMENT_MODULE(FSPCRJointDynamicsEd, SPCRJointDynamicsEd)
 //======================================================================================
 void FSPCRJointDynamicsEd::StartupModule()
 {
-	FEditorModeRegistry::Get().RegisterMode<SPCRJointDynamics_Editor>(SPCRJointDynamics_Editor::REGISTER_MODE_ID, LOCTEXT("SPCRJointDynamics_Editor", "SPCR Joint Dynamics"), FSlateIcon(), false);
+	FEditorModeRegistry::Get().RegisterMode<SPCRJointDynamics_Editor>(SPCRJointDynamics_Editor::REGISTER_MODE_ID, 
+		LOCTEXT("SPCRJointDynamics_Editor", "SPCR Joint Dynamics"), FSlateIcon(), false);
 }
 
 void FSPCRJointDynamicsEd::ShutdownModule()
