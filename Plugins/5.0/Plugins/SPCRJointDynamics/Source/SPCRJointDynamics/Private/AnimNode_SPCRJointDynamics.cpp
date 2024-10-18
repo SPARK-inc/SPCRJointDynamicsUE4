@@ -1147,6 +1147,10 @@ void FAnimNode_SPCRJointDynamics::ApplyToBone(FComponentSpacePoseContext& Output
 	for (int32 iTable = 0; iTable < PointAccessTblNum; ++iTable)
 	{
 		const auto& Point = *_PointAccessTbl[iTable];
+		if (Point.Transform.ContainsNaN())
+		{
+			continue;
+		}
 		OutBoneTransforms.Add(FBoneTransform(Point.BoneIndex, Point.Transform));
 	}
 }
