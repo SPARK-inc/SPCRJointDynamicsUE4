@@ -46,6 +46,9 @@ public:
 	virtual bool GetCustomDrawingCoordinateSystem(FMatrix& InMatrix, void* InData) override;
 	virtual void DrawHUD(FEditorViewportClient* ViewportClient, FViewport* Viewport, const FSceneView* View, FCanvas* Canvas) override;
 
+	virtual bool SupportsPoseWatch();
+	virtual void RegisterPoseWatchedNode(UAnimGraphNode_Base* InEditorNode, FAnimNode_Base* InRuntimeNode);
+
 private:
 	void RenderCapculeColliders(FPrimitiveDrawInterface* PDI, FSPCRJointDynamicsBody& OutCollider, const int ColliderIndex, const FTransform& BoneTransform, const float Radius, const float Height);
 	void RenderSphereColliders(FPrimitiveDrawInterface* PDI, FSPCRJointDynamicsBody& OutCollider, const int ColliderIndex, const FTransform& BoneTransform, const float Radius);
