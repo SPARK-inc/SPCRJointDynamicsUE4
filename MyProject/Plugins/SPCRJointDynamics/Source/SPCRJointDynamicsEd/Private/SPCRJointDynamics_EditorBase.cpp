@@ -18,7 +18,7 @@ IMPLEMENT_HIT_PROXY(HSPCRColliderHitProxy, HHitProxy);
 SPCRJointDynamics_EditorBase::SPCRJointDynamics_EditorBase()
 	:AnimGraphNode(nullptr),
 	RuntimeNode(nullptr),
-	CurrentWidgetMode(FWidget::EWidgetMode::WM_Translate),
+	CurrentWidgetMode(UE::Widget::EWidgetMode::WM_Translate),
 	SelectedColliderIndex(SPCR_INVALID_COLLIDER_INDEX)
 {
 }
@@ -39,20 +39,20 @@ ECoordSystem SPCRJointDynamics_EditorBase::GetWidgetCoordinateSystem() const
 	return ECoordSystem::COORD_None;
 }
 
-FWidget::EWidgetMode SPCRJointDynamics_EditorBase::GetWidgetMode() const
+UE::Widget::EWidgetMode SPCRJointDynamics_EditorBase::GetWidgetMode() const
 {
 	if (IsValidColliderIndex())
 		return CurrentWidgetMode;
 	else
-		return FWidget::EWidgetMode::WM_None;
+		return UE::Widget::EWidgetMode::WM_None;
 }
 
-FWidget::EWidgetMode SPCRJointDynamics_EditorBase::ChangeToNextWidgetMode(FWidget::EWidgetMode CurWidgetMode)
+UE::Widget::EWidgetMode SPCRJointDynamics_EditorBase::ChangeToNextWidgetMode(UE::Widget::EWidgetMode CurWidgetMode)
 {
-	return FWidget::EWidgetMode::WM_None;
+	return UE::Widget::EWidgetMode::WM_None;
 }
 
-bool SPCRJointDynamics_EditorBase::SetWidgetMode(FWidget::EWidgetMode InWidgetMode)
+bool SPCRJointDynamics_EditorBase::SetWidgetMode(UE::Widget::EWidgetMode InWidgetMode)
 {
 	if (AnimGraphNode != nullptr)
 	{
@@ -166,7 +166,7 @@ bool SPCRJointDynamics_EditorBase::HandleClick(FEditorViewportClient* InViewport
 		if (spcrColliderHitProxy != nullptr)
 		{
 			SelectedColliderIndex = spcrColliderHitProxy->ColliderIndex;
-			CurrentWidgetMode = FWidget::EWidgetMode::WM_Translate;
+			CurrentWidgetMode = UE::Widget::EWidgetMode::WM_Translate;
 			isValid = true;
 		}
 	}
@@ -174,7 +174,7 @@ bool SPCRJointDynamics_EditorBase::HandleClick(FEditorViewportClient* InViewport
 	if(!isValid)
 	{
 		SelectedColliderIndex = SPCR_INVALID_COLLIDER_INDEX;
-		CurrentWidgetMode = FWidget::EWidgetMode::WM_None;
+		CurrentWidgetMode = UE::Widget::EWidgetMode::WM_None;
 	}
 
 	SetWidgetMode(CurrentWidgetMode);
@@ -188,13 +188,13 @@ bool SPCRJointDynamics_EditorBase::InputDelta(FEditorViewportClient* InViewportC
 
 	if (IsValidColliderIndex() && CurrentAxis != EAxisList::Type::None)
 	{
-		const FWidget::EWidgetMode WidgetMode = InViewportClient->GetWidgetMode();
+		const UE::Widget::EWidgetMode WidgetMode = InViewportClient->GetWidgetMode();
 
-		if (WidgetMode != FWidget::EWidgetMode::WM_None)
+		if (WidgetMode != UE::Widget::EWidgetMode::WM_None)
 		{
-			const bool IsTranslate = WidgetMode == FWidget::EWidgetMode::WM_Translate;
-			const bool IsRotation = WidgetMode == FWidget::EWidgetMode::WM_Rotate;
-			const bool IsScale = WidgetMode == FWidget::EWidgetMode::WM_Scale;
+			const bool IsTranslate = WidgetMode == UE::Widget::EWidgetMode::WM_Translate;
+			const bool IsRotation = WidgetMode == UE::Widget::EWidgetMode::WM_Rotate;
+			const bool IsScale = WidgetMode == UE::Widget::EWidgetMode::WM_Scale;
 
 			if (IsTranslate)
 			{

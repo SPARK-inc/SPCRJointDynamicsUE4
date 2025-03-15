@@ -88,7 +88,7 @@ struct SPCRJOINTDYNAMICS_API FSPCRCurveZero
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(EditAnywhere, Category = Curve)
-	class UCurveFloat* Curve;
+	class UCurveFloat* Curve = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = Curve)
 	float Power = 0.0f;
@@ -382,7 +382,7 @@ struct SPCRJOINTDYNAMICS_API FAnimNode_SPCRJointDynamics : public FAnimNode_Skel
 	TArray<FSPCRJointDynamicsBody> Bodies;
 
 	UPROPERTY(EditAnywhere, Category = Link, meta = (AlwaysAsPin))
-	USPCRJointDynamicsComponent* jointDynamicsComponent;
+	USPCRJointDynamicsComponent* jointDynamicsComponent= nullptr;
 
 	UPROPERTY(EditAnywhere, Category = Limit)
 	bool bLimitAngle = false;

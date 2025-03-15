@@ -977,7 +977,6 @@ void FAnimNode_SPCRJointDynamics::UpdateSurfaceCollision(float CollisionSubDelta
 							OutPointOnCollider += ColliderToEndVec * (CEDotCI / LineDot);
 							FVector TowardsCollider = OutPointOnCollider - OutIntersectionPoint;
 							return TowardsCollider.SizeSquared() <= OutRadius * OutRadius;
-							return false;
 						}
 					}
 				}
@@ -1884,7 +1883,7 @@ void FAnimNode_SPCRJointDynamics::DebugDrawConstraints()
 	// 拘束のデバッグ表示
 	if (bDebugDrawConstraints)
 	{
-		FFunctionGraphTask::CreateAndDispatchWhenReady([=]()
+		FFunctionGraphTask::CreateAndDispatchWhenReady([=,this]()
 			{
 				for (int32 iConstraint = 0; iConstraint < _Constraints.Num(); ++iConstraint)
 				{
@@ -1916,7 +1915,7 @@ void FAnimNode_SPCRJointDynamics::DebugDrawSurfaceCollision()
 {
 	if (bDebugDrawSurfaceCollision)
 	{
-		FFunctionGraphTask::CreateAndDispatchWhenReady([=]()
+		FFunctionGraphTask::CreateAndDispatchWhenReady([=, this]()
 			{
 				for (int32 iConstraint = 0; iConstraint < _SurfaceConstraints.Num(); ++iConstraint)
 				{

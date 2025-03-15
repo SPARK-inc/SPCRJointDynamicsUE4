@@ -28,6 +28,8 @@ public class SPCRJointDynamicsEd : ModuleRules
             "Engine",
             "InputCore",
             "SPCRJointDynamics",
+            "AnimationEditMode",
+            "EditorFramework"
         });
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core",
